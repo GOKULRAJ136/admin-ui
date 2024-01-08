@@ -2,7 +2,7 @@ name: admin-ui build upon a push
 
 on:
   release:
-    types: [opened, reopened, synchronize]
+    types: [published]
   pull_request:
     types: [opened]
   push:
