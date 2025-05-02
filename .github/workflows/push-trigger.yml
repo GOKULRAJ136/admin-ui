@@ -128,7 +128,7 @@ jobs:
           name: ${{ env.BUILD_ARTIFACT }}
           path: ${{ env.BUILD_ARTIFACT }}.zip
 
-      - uses: 8398a7/action-slack@v3
+      - uses: 8398a7/action-slack@v4
         with:
           status: ${{ job.status }}
           fields: repo,message,author,commit,workflow,job # selectable (default: repo,message)
