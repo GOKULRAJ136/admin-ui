@@ -632,7 +632,7 @@ public class ConfigManager {
 		return propsKernel.getProperty("roles." + userId);
 	}
 
-	private static Properties getproperty(String path) {
+	public static Properties getproperty(String path) {
 		Properties prop = new Properties();
 		try {
 			File file = new File(path);
@@ -673,6 +673,7 @@ public class ConfigManager {
 //	public static String getAuthDemoServiceUrl() {
 //		return ConfigManager.getAuthDemoServiceBaseUrl() + ":" + ConfigManager.getAuthDemoServicePort();
 //	}
+
 
 	
 	

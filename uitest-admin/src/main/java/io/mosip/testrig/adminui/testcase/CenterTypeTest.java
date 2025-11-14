@@ -13,22 +13,22 @@ public class CenterTypeTest extends BaseClass{
 	public void centerTypeCRUD() throws IOException {
 		String idCenterTypeCard="admin/masterdata/center-type/view";
 
-		Commons.click(driver,By.xpath("//a[@href='#/admin/masterdata']")); 
-		Commons.click(driver,By.id(idCenterTypeCard));
-		Commons.click(driver,By.id("Create"));  
-		Commons.enter(driver,By.id("code"),data);
-		Commons.enter(driver,By.id("name"),data);
-		Commons.enter(driver,By.id("descr"),data);    
-		Commons.create(driver);
-		Commons.filter(driver, By.id("name"), data);
+		Commons.click(driver(),By.xpath("//a[@href='#/admin/masterdata']")); 
+		Commons.click(driver(),By.id(idCenterTypeCard));
+		Commons.click(driver(),By.id("Create"));  
+		Commons.enter(driver(),By.id("code"),data);
+		Commons.enter(driver(),By.id("name"),data);
+		Commons.enter(driver(),By.id("descr"),data);    
+		Commons.create(driver());
+		Commons.filter(driver(), By.id("name"), data);
 
-		Commons.edit(driver,data+1,By.id("name"));
-		Commons.filter(driver, By.id("name"), data+1);
+		Commons.edit(driver(),data+1,By.id("name"));
+		Commons.filter(driver(), By.id("name"), data+1);
 
-		Commons.activate(driver);
-		Commons.edit(driver,data+2,By.id("name"));
-		Commons.filter(driver, By.id("name"), data+2);
-		Commons.deactivate(driver);
+		Commons.activate(driver());
+		Commons.edit(driver(),data+2,By.id("name"));
+		Commons.filter(driver(), By.id("name"), data+2);
+		Commons.deactivate(driver());
 
 	}
 }

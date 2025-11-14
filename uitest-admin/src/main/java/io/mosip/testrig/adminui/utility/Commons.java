@@ -331,20 +331,54 @@ public class Commons  extends BaseClass{
 		int day=Integer.parseInt(d);
 		int year=Integer.parseInt(a.substring(4,8));
 		try {
-			Commons.click(driver,By.xpath("//*[@class='mat-datepicker-toggle']//button"));
+			Commons.click(driver(),By.xpath("//*[@class='mat-datepicker-toggle']//button"));
 			wait(500);
-			Commons.click(driver,By.xpath("//*[@class='mat-calendar-arrow']"));
+			Commons.click(driver(),By.xpath("//*[@class='mat-calendar-arrow']"));
 			wait(500);
-			Commons.click(driver,By.xpath("//*[text()='"+year+"']"));
+			Commons.click(driver(),By.xpath("//*[text()='"+year+"']"));
 			wait(500);
-			List<WebElement> cli=  driver.findElements(By.xpath("//*[@class='mat-calendar-body-cell-content']"));
+			List<WebElement> cli=  driver().findElements(By.xpath("//*[@class='mat-calendar-body-cell-content']"));
 			cli.get(month-1).click();
 			wait(500);
-			Commons.click(driver,By.xpath("//*[text()='"+day+"']"));
+			Commons.click(driver(),By.xpath("//*[text()='"+day+"']"));
 		}catch (Exception e) {
-			Reporter.log("<p><img src='data:image/png;base64," + Screenshot.ClickScreenshot(driver) + "' width='900' height='450'/></p>");
+			Reporter.log("<p><img src='data:image/png;base64," + Screenshot.ClickScreenshot(driver()) + "' width='900' height='450'/></p>");
 			logger.info(e.getMessage());
 		}
+	}
+	
+	public static void calendar(String date, String locale) throws IOException {
+	    String a = date.replaceAll("/", "");
+	    int month = Integer.parseInt(a.substring(0, 2));
+	    int day = Integer.parseInt(a.substring(2, 4));
+	    int year = Integer.parseInt(a.substring(4, 8));
+
+	    try {
+	        // Open calendar
+	        Commons.click(driver(), By.xpath("//*[@class='mat-datepicker-toggle']//button"));
+	        Thread.sleep(500);
+
+	        // Expand year/month selector
+	        Commons.click(driver(), By.xpath("//*[@class='mat-calendar-arrow']"));
+	        Thread.sleep(500);
+
+	        // Click year
+	        String yearText = convertDigits(String.valueOf(year), locale);
+	        Commons.click(driver(), By.xpath("//*[normalize-space(text())='" + yearText + "']"));
+	        Thread.sleep(500);
+
+	        // Select month (index based to avoid translation issues)
+	        List<WebElement> months = driver().findElements(By.xpath("//*[@class='mat-calendar-body-cell-content']"));
+	        months.get(month - 1).click();
+	        Thread.sleep(500);
+
+	        // Select day (convert if Arabic locale)
+	        String dayText = convertDigits(String.valueOf(day), locale);
+	        Commons.click(driver(), By.xpath("//*[normalize-space(text())='" + dayText + "']"));
+	    } catch (Exception e) {
+	        Reporter.log("<p><img src='data:image/png;base64," + Screenshot.ClickScreenshot(driver()) + "' width='900' height='450'/></p>");
+	        logger.info(e.getMessage());
+	    }
 	}
 
 	public static void wait(int waitTime) {
@@ -358,7 +392,7 @@ public class Commons  extends BaseClass{
 	public static boolean isElementDisplayed(By by) {
 	    try {
 	        wait(500); // Make sure you have a proper wait method or use Thread.sleep(500);
-	        return driver.findElement(by).isDisplayed();
+	        return driver().findElement(by).isDisplayed();
 	    } catch (Exception e) {
 	        return false;
 	    }

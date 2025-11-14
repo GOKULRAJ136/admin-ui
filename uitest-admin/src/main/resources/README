@@ -2,7 +2,7 @@ This Repository is used for Admin Portal Automation.
 
 How To run : 
 	First Build Jar
-	Place VM args- java  -Dpath=https://admin.env.mosip.net/ -DKeyclockURL=https://iam.env.mosip.net -Denv.user=api-internal.env  -Denv.endpoint=https://api-internal.dev3.mosip.net -jar nameofAdminJar.jar
+	Place VM args- java  -Dpath=https://admin.env.mosip.net/ -DKeyclockURL=https://iam.env.mosip.net -Denv.endpoint=https://api-internal.env.mosip.net -Dpath.config=/src/main/resources/
 	Place jar in one folder along with src/main/resources files and folder and then run jar
 
 TestData Setup:

@@ -36,10 +36,6 @@ import io.mosip.testrig.adminui.fw.util.AdminTestUtil;
 import io.mosip.testrig.adminui.kernel.util.ConfigManager;
 import io.mosip.testrig.adminui.kernel.util.S3Adapter;
 
-
-
-
-
 /**
  * Reporter that generates a single-page HTML report of the test results.
  */
@@ -61,8 +57,6 @@ public class EmailableReport implements IReporter {
 	int totalSkippedTests = 0;
 	int totalFailedTests = 0;
 
-
-
 	public void setFileName(String fileName) {
 		this.fileName = fileName;
 	}
@@ -72,75 +66,49 @@ public class EmailableReport implements IReporter {
 	}
 
 	@Override
-	public void generateReport(List<XmlSuite> xmlSuites, List<ISuite> suites, String outputDirectory) {
-		try {
-			writer = createWriter(outputDirectory);
-		} catch (IOException e) {
-			logger.error("Unable to create output file", e);
-			return;
-		}
-		for (ISuite suite : suites) {
-			suiteResults.add(new SuiteResult(suite));
-		}
-		writeDocumentStart();
-		writeHead();
-		writeBody();
-		writeDocumentEnd();
-		writer.close();
+	public void generateReport(List<XmlSuite> xmlSuites, List<ISuite> suites, String outputDir) {
+	    try (PrintWriter writer = createWriter(outputDir)) {
+	        this.writer = writer;
 
-		int totalTestCases = totalPassedTests + totalSkippedTests + totalFailedTests;
-		String oldString = System.getProperty("emailable.report2.name");
-		String temp = "-report_T-" + totalTestCases + "_P-" + totalPassedTests + "_S-" + totalSkippedTests + "_F-"
-				+ totalFailedTests;
-		String newString = oldString.replace("-report", temp);
+	        for (ISuite suite : suites) suiteResults.add(new SuiteResult(suite));
 
-		File orignialReportFile = new File(System.getProperty("user.dir") + "/"
-				+ System.getProperty("testng.outpur.dir") + "/" + System.getProperty("emailable.report2.name"));
-		logger.info("reportFile is::" + System.getProperty("user.dir") + "/" + System.getProperty("testng.outpur.dir")
-		+ "/" + System.getProperty("emailable.report2.name"));
+	        writeDocumentStart();
+	        writeHead();
+	        writeBody();
+	        writeDocumentEnd();
+	    } catch (IOException e) {
+	        logger.error("Error creating TestNG report", e);
+	        return;
+	    }
 
-		File newReportFile = new File(
-				System.getProperty("user.dir") + "/" + System.getProperty("testng.outpur.dir") + "/" + newString);
-		logger.info("New reportFile is::" + System.getProperty("user.dir") + "/"
-				+ System.getProperty("testng.outpur.dir") + "/" + newString);
+	    // --- Prepare filename details ---
+	    String lang = getValueForKey("loginlang");
+	    if (lang == null || lang.isEmpty()) lang = "eng";
 
-		if (orignialReportFile.exists()) {
-			if (orignialReportFile.renameTo(newReportFile)) {
-				orignialReportFile.delete();
-				logger.info("Report File re-named successfully!");
+	    String date = java.time.LocalDateTime.now()
+	            .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm"));
 
-				if (ConfigManager.getPushReportsToS3().equalsIgnoreCase("yes")) {
-					S3Adapter s3Adapter = new S3Adapter();
-					boolean isStoreSuccess = false;
-					boolean isStoreSuccess2 = false;
-					try {
-						isStoreSuccess = s3Adapter.putObject(ConfigManager.getS3Account(), "Adminui", null,
-								null, newString, newReportFile);
-						logger.info("isStoreSuccess:: " + isStoreSuccess);
+	    String env = "base-run";
+	    try {
+	        String envUser = ConfigManager.getiam_apienvuser();
+	        if (envUser != null && !envUser.isEmpty())
+	            env = envUser.replaceAll(".*?\\.([^\\.]+\\.[^\\.]+).*", "$1");
+	    } catch (Exception ignored) {}
 
-						/* Need to figure how to handle EXTENT report handling */
+	    int total = totalPassedTests + totalSkippedTests + totalFailedTests;
 
+	    String newName = String.format(
+	        "ADMINUI-%s-%s-%s-report_T-%d_P-%d_S-%d_F-%d.html",
+	        env, lang, date, total, totalPassedTests, totalSkippedTests, totalFailedTests
+	    );
 
-
-
-
-					} catch (Exception e) {
-						logger.error("error occured while pushing the object" + e.getMessage());
-					}
-					if (isStoreSuccess && isStoreSuccess2) {
-						logger.info("Pushed report to S3");
-					} else {
-						logger.error("Failed while pushing file to S3");
-					}
-				}
-			} else {
-				logger.error("Renamed report file doesn't exist");
-			}
-		} else {
-			logger.error("Original report File does not exist!");
-		}
+	    // --- Rename file ---
+	    File oldFile = new File(outputDir, fileName);
+	    File newFile = new File(outputDir, newName);
+	    if (oldFile.exists() && oldFile.renameTo(newFile))
+	        logger.info("Report renamed to: " + newName);
 	}
-
+	
 	private String getCommitId() {
 		Properties properties = new Properties();
 		try (InputStream is = EmailableReport.class.getClassLoader().getResourceAsStream("git.properties")) {
@@ -153,7 +121,6 @@ public class EmailableReport implements IReporter {
 			logger.error(e.getMessage());
 			return "";
 		}
-
 	}
 
 	protected PrintWriter createWriter(String outdir) throws IOException {
@@ -180,31 +147,32 @@ public class EmailableReport implements IReporter {
 
 	protected void writeStylesheet() {
 		writer.print("<style type=\"text/css\">");
-	    writer.print("table {margin-bottom:10px;border-collapse:collapse;empty-cells:show;width: 100%;}");
-	    writer.print("th,td {border:1px solid #009;padding:.25em .5em;width: 25%;}");  // Set a fixed width for uniform cell sizes
-	    writer.print("th {vertical-align:bottom}");
-	    writer.print("td {vertical-align:top}");
-	    writer.print("table a {font-weight:bold}");
-	    writer.print(".stripe td {background-color: #E6EBF9}");
-	    writer.print(".num {text-align:center}");
-	    writer.print(".orange-bg {background-color: #FFA500}");
-	    writer.print(".grey-bg {background-color: #808080}");
-	    writer.print(".thich-orange-bg {background-color: #CC5500}");
-	    writer.print(".green-bg {background-color: #0A0}");
-	    writer.print(".attn {background-color: #D00}");
-	    writer.print(".passedodd td {background-color: #3F3}");
-	    writer.print(".passedeven td {background-color: #0A0}");
-	    writer.print(".skippedodd td {background-color: #FFA500}");
-	    writer.print(".skippedeven td,.stripe {background-color: #FFA500}");
-	    writer.print(".failedodd td {background-color: #F33}");
-	    writer.print(".failedeven td,.stripe {background-color: #D00}");
-	    writer.print(".ignoredodd td {background-color: #808080}");
-	    writer.print(".ignoredeven td {background-color: #808080}");
-	    writer.print(".known_issuesodd td {background-color: #CC5500}");
-	    writer.print(".known_issueseven td {background-color: #CC5500}");
-	    writer.print(".stacktrace {white-space:pre;font-family:monospace}");
-	    writer.print(".totop {font-size:85%;text-align:center;border-bottom:2px solid #000}");
-	    writer.print("</style>");
+		writer.print("table {margin-bottom:10px;border-collapse:collapse;empty-cells:show;width: 100%;}");
+		writer.print("th,td {border:1px solid #009;padding:.25em .5em;width: 25%;}"); // Set a fixed width for uniform
+																						// cell sizes
+		writer.print("th {vertical-align:bottom}");
+		writer.print("td {vertical-align:top}");
+		writer.print("table a {font-weight:bold}");
+		writer.print(".stripe td {background-color: #E6EBF9}");
+		writer.print(".num {text-align:center}");
+		writer.print(".orange-bg {background-color: #FFA500}");
+		writer.print(".grey-bg {background-color: #808080}");
+		writer.print(".thich-orange-bg {background-color: #CC5500}");
+		writer.print(".green-bg {background-color: #0A0}");
+		writer.print(".attn {background-color: #D00}");
+		writer.print(".passedodd td {background-color: #3F3}");
+		writer.print(".passedeven td {background-color: #0A0}");
+		writer.print(".skippedodd td {background-color: #FFA500}");
+		writer.print(".skippedeven td,.stripe {background-color: #FFA500}");
+		writer.print(".failedodd td {background-color: #F33}");
+		writer.print(".failedeven td,.stripe {background-color: #D00}");
+		writer.print(".ignoredodd td {background-color: #808080}");
+		writer.print(".ignoredeven td {background-color: #808080}");
+		writer.print(".known_issuesodd td {background-color: #CC5500}");
+		writer.print(".known_issueseven td {background-color: #CC5500}");
+		writer.print(".stacktrace {white-space:pre;font-family:monospace}");
+		writer.print(".totop {font-size:85%;text-align:center;border-bottom:2px solid #000}");
+		writer.print("</style>");
 	}
 
 	protected void writeBody() {
@@ -222,21 +190,20 @@ public class EmailableReport implements IReporter {
 	protected void writeSuiteSummary() {
 		NumberFormat integerFormat = NumberFormat.getIntegerInstance();
 		NumberFormat decimalFormat = NumberFormat.getNumberInstance();
-		String formattedDate =null;
+		String formattedDate = null;
 		LocalDate currentDate = LocalDate.now();
-		 String branch = null;
-		
+		String branch = null;
+
 		try {
-			
+
 			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-		    formattedDate = currentDate.format(formatter);
+			formattedDate = currentDate.format(formatter);
 			Process process = Runtime.getRuntime().exec("git rev-parse --abbrev-ref HEAD");
-	        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-	        branch = reader.readLine();
-			}
-			catch (Exception e) {
-				// TODO: handle exception
-			}
+			BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+			branch = reader.readLine();
+		} catch (Exception e) {
+			// TODO: handle exception
+		}
 		totalPassedTests = 0;
 		totalSkippedTests = 0;
 		totalFailedTests = 0;
@@ -249,7 +216,8 @@ public class EmailableReport implements IReporter {
 			writer.print(Utils.escapeHtml(suiteResult.getSuiteName() + " ---- " + "Report Date: " + formattedDate
 					+ " ---- " + "Tested Environment: "
 					+ ConfigManager.getiam_apienvuser().replaceAll(".*?\\.([^\\.]+)\\..*", "$1") + " ---- "
-					+ getCommitId()));			writer.print("</th></tr>");
+					+ getCommitId()));
+			writer.print("</th></tr>");
 
 			writer.print("<tr><th colspan=\"7\"><span class=\"not-bold\"><pre>");
 			writer.print(Utils.escapeHtml("Server Component Details " + AdminTestUtil.getServerComponentsDetails()));
@@ -257,11 +225,11 @@ public class EmailableReport implements IReporter {
 			writer.print("</th></tr>");
 
 			writer.print("<tr>");
-			//			writer.print("<th>Test Suite</th>");
+			// writer.print("<th>Test Suite</th>");
 			writer.print("<th># Passed</th>");
 			writer.print("<th># Skipped</th>");
 			writer.print("<th># Failed</th>");
-			writer.print("<th>Time (ms)</th>");
+			writer.print("<th>Time (min)</th>");
 			// writer.print("<th>Included Groups</th>");
 			// writer.print("<th>Excluded Groups</th>");
 			writer.print("</tr>");
@@ -279,12 +247,14 @@ public class EmailableReport implements IReporter {
 				writer.print(">");
 
 				buffer.setLength(0);
-				//				writeTableData(buffer.append("<a href=\"#t").append(testIndex).append("\">")
-				//						.append(Utils.escapeHtml(testResult.getTestName())).append("</a>").toString());
+				// writeTableData(buffer.append("<a href=\"#t").append(testIndex).append("\">")
+				// .append(Utils.escapeHtml(testResult.getTestName())).append("</a>").toString());
 				writeTableData(integerFormat.format(passedTests), (passedTests > 0 ? "num green-bg" : "num"));
 				writeTableData(integerFormat.format(skippedTests), (skippedTests > 0 ? "num orange-bg" : "num"));
 				writeTableData(integerFormat.format(failedTests), (failedTests > 0 ? "num attn" : "num"));
-				writeTableData(decimalFormat.format(duration), "num");
+				double minutes = duration / 60000.0;
+				writeTableData(String.format("%.2f", minutes), "num");
+
 				/*
 				 * writeTableData(testResult.getIncludedGroups());
 				 * writeTableData(testResult.getExcludedGroups());
@@ -325,7 +295,7 @@ public class EmailableReport implements IReporter {
 		writer.print("<tr>");
 		// writer.print("<th>Class</th>");
 		writer.print("<th> Test </th>");
-		writer.print("<th>Time (ms)</th>");
+		writer.print("<th>Time (min)</th>");
 		writer.print("</tr>");
 		writer.print("</thead>");
 
@@ -391,27 +361,32 @@ public class EmailableReport implements IReporter {
 					int resultsCount = results.size();
 					assert resultsCount > 0;
 					ITestResult firstResult = results.iterator().next();
-					String methodName=firstResult.getName();
+					String methodName = firstResult.getName();
 					// Write the remaining scenarios for the method
 
 					for (int i = 0; i < resultsCount; i++) {
 
 						ITestResult result = results.get(i);
-						//		String [] scenarioDetails = getScenarioDetails(result);
+						// String [] scenarioDetails = getScenarioDetails(result);
 
-						//		String scenarioName = Utils.escapeHtml("Scenario_" + scenarioDetails[0]);
-						//	String scenarioDescription = Utils.escapeHtml(scenarioDetails[1]);
+						// String scenarioName = Utils.escapeHtml("Scenario_" + scenarioDetails[0]);
+						// String scenarioDescription = Utils.escapeHtml(scenarioDetails[1]);
 
 						long scenarioStart = result.getStartMillis();
-						long scenarioDuration = result.getEndMillis() - scenarioStart;
+						long scenarioDurationMs = result.getEndMillis() - scenarioStart;
+						double scenarioDurationMin = scenarioDurationMs / 60000.0;
 
-						//						buffer.append("<tr class=\"").append(cssClass).append("\">").append("<td><a href=\"#m")
-						//								.append(scenarioIndex).append("\">").append(scenarioName).append("</a></td>")
-						//								.append("<td>").append(scenarioDescription).append("</td>")
-						//								.append("<td>").append(scenarioDuration).append("</td></tr>");
-						buffer.append("<tr class=\"").append(cssClass).append("\">")  // Start of table row with a specified CSS class
-						.append("<td><a href=\"#m").append(scenarioIndex).append("\">").append(methodName).append("</a></td>")  // Table cell with a hyperlink
-						.append("<td>").append(scenarioDuration).append("</td></tr>");  // Table cell with scenario duration
+						// buffer.append("<tr class=\"").append(cssClass).append("\">").append("<td><a
+						// href=\"#m")
+						// .append(scenarioIndex).append("\">").append(scenarioName).append("</a></td>")
+						// .append("<td>").append(scenarioDescription).append("</td>")
+						// .append("<td>").append(scenarioDuration).append("</td></tr>");
+						buffer.append("<tr class=\"").append(cssClass).append("\">") // Start of table row with a
+																						// specified CSS class
+								.append("<td><a href=\"#m").append(scenarioIndex).append("\">").append(methodName)
+								.append("</a></td>") // Table cell with a hyperlink
+								.append("<td>").append(String.format("%.2f", scenarioDurationMin)).append("</td></tr>"); // Table cell with
+																								// scenario duration
 
 						scenarioIndex++;
 					}
@@ -427,8 +402,6 @@ public class EmailableReport implements IReporter {
 		}
 		return scenarioCount;
 	}
-
-
 
 	/**
 	 * Writes the details for all test scenarios.
@@ -447,7 +420,8 @@ public class EmailableReport implements IReporter {
 				scenarioIndex += writeScenarioDetails(testResult.getFailedTestResults(), scenarioIndex);
 				scenarioIndex += writeScenarioDetails(testResult.getSkippedConfigurationResults(), scenarioIndex);
 				scenarioIndex += writeScenarioDetails(testResult.getSkippedTestResults(), scenarioIndex);
-				//	scenarioIndex += writeScenarioDetails(testResult.getPassedTestResults(), scenarioIndex);
+				// scenarioIndex += writeScenarioDetails(testResult.getPassedTestResults(),
+				// scenarioIndex);
 			}
 		}
 	}
@@ -463,8 +437,8 @@ public class EmailableReport implements IReporter {
 			for (MethodResult methodResult : classResult.getMethodResults()) {
 				List<ITestResult> results = methodResult.getResults();
 				assert !results.isEmpty();
-				//	ITestResult firstResult = results.iterator().next();
-				//	String methodName=firstResult.getName();
+				// ITestResult firstResult = results.iterator().next();
+				// String methodName=firstResult.getName();
 				String label = Utils
 						.escapeHtml(className + "#" + results.iterator().next().getMethod().getMethodName());
 				for (ITestResult result : results) {
@@ -873,5 +847,25 @@ public class EmailableReport implements IReporter {
 			return results;
 		}
 	}
+	
+	private static String getValueForKey(String key) {
+	    String value = System.getenv(key);
+	    if (value == null || value.isEmpty()) {
+	        try {
+	            java.lang.reflect.Field field = io.mosip.testrig.adminui.kernel.util.ConfigManager.class.getDeclaredField("propsKernel");
+	            field.setAccessible(true);
+	            Object props = field.get(null);
+	            if (props instanceof java.util.Properties) {
+	                value = ((java.util.Properties) props).getProperty(key);
+	            }
+	        } catch (Exception e) {
+	            value = "";
+	        }
+	    }
+
+	    return value;
+	}
+
+
 
 }
